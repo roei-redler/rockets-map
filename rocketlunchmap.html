@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Launch Drawing</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ol/dist/ol.css" type="text/css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ol3/4.6.5/ol.js"></script>
+    <style>
+        #map {
+            width: 100%;
+            height: 820px;
+        }
+         .tooltip {
+            position: relative;
+            display: none;
+            background-color: white;
+            border: 1px solid #ccc;
+            padding: 8px;
+            font-size: 12px;
+            z-index: 9999;
+        }
+        
+    </style>
+</head>
+<body>
+    <div id="map"></div>
+    <div id="tooltip" class="tooltip"></div>
+    <script>
+        // Create a map
+        var map = new ol.Map({
+            target: 'map',
+            layers: [
+                new ol.layer.Tile({
+                    source: new ol.source.OSM()
+                })
+            ],
+            view: new ol.View({
+                center: ol.proj.fromLonLat([34.661044, 31.963158]), // Center coordinates
+                zoom: 9
+            })
+        });
+
+        // JSON dataset with launch and impact points
+        var pointsData = [
+            {
+                "name": "Launch Point",
+                "latitude": 31.54332883578639,
+                "longitude": 34.472345547473076
+            },
+            {
+                "name": "Impact Point",
+                "latitude": 32.217408583556605,
+                "longitude": 34.851464652113705
+            },
+            {
+                "name": "Launch Point 2",
+                "latitude": 31.54332883578639,
+                "longitude": 34.472345547473076
+            },
+            {
+                "name": "Impact Point 2",
+                "latitude": 31.755716785200804,
+                "longitude": 35.1852211621494
+            },
+            {
+                "name": "Launch Point 3",
+                "latitude": 31.54332883578639,
+                "longitude": 34.472345547473076
+            },
+            {
+                "name": "Impact Point 3",
+                "latitude": 31.6750041144112,
+                "longitude": 34.574609837593194
+            },
+            {
+                "name": "Launch Point 3",
+                "latitude": 32.681846439944934,
+                "longitude": 51.59695345803914
+            },
+            {
+                "name": "Impact Point 3",
+                "latitude": 31.755716785200804,
+                "longitude": 35.1852211621494
+            }
+        ];
+
+        // Create an array to store the features
+        var features = [];
+
+        // Iterate over the points data and create features dynamically
+        for (var i = 0; i < pointsData.length; i += 2) {
+            var launchPoint = pointsData[i];
+            var impactPoint = pointsData[i + 1];
+
+            var launchFeature = new ol.Feature({
+                geometry: new ol.geom.Point(ol.proj.fromLonLat([launchPoint.longitude, launchPoint.latitude])),
+                data: launchPoint
+            });
+
+            var impactFeature = new ol.Feature({
+                geometry: new ol.geom.Point(ol.proj.fromLonLat([impactPoint.longitude, impactPoint.latitude])),
+                data: impactPoint
+            });
+
+            // Set the style for each point
+            launchFeature.setStyle(new ol.style.Style({
+                image: new ol.style.Circle({
+                    radius: 6,
+                    fill: new ol.style.Fill({
+                        color: 'red'
+                    }),
+                    stroke: new ol.style.Stroke({
+                        color: 'white',
+                        width: 2
+                    })
+                })
+            }));
+
+            impactFeature.setStyle(new ol.style.Style({
+                image: new ol.style.Circle({
+                    radius: 6,
+                    fill: new ol.style.Fill({
+                        color: 'blue'
+                    }),
+                    stroke: new ol.style.Stroke({
+                        color: 'white',
+                        width: 2
+                    })
+                })
+            }));
+
+            features.push(launchFeature, impactFeature);
+
+            // Create a line between the launch point and the impact point
+            var lineFeature = new ol.Feature({
+                geometry: new ol.geom.LineString([
+                    launchFeature.getGeometry().getCoordinates(),
+                    impactFeature.getGeometry().getCoordinates()
+                ])
+            });
+            lineFeature.setStyle(new ol.style.Style({
+                stroke: new ol.style.Stroke({
+                    color: 'black',
+                    width: 2
+                })
+            }));
+
+            features.push(lineFeature);
+        }
+
+        // Create a vector source and layer
+        var vectorSource= new ol.source.Vector({
+            features: features
+        });
+
+        var vectorLayer = new ol.layer.Vector({
+            source: vectorSource
+        });
+
+        // Add the vector layer to the map
+        map.addLayer(vectorLayer);
+
+        // Create a tooltip overlay
+        var tooltipElement = document.getElementById('tooltip');
+        var tooltip = new ol.Overlay({
+            element: tooltipElement,
+            offset: [10, 0],
+            positioning: 'bottom-left'
+        });
+        map.addOverlay(tooltip);
+
+// Display tooltip on pointermove
+map.on('pointermove', function (evt) {
+    var feature = map.forEachFeatureAtPixel(evt.pixel, function (feature) {
+        return feature;
+    });
+
+    if (feature && feature.get('data')) {
+        var coordinate = evt.coordinate;
+        tooltip.setPosition(coordinate);
+
+        var data = feature.get('data');
+        var content = '<strong>Name:</strong> ' + data.name + '<br>';
+        content += '<strong>Latitude:</strong> ' + data.latitude.toFixed(6) + '<br>';
+        content += '<strong>Longitude:</strong> ' + data.longitude.toFixed(6);
+
+        tooltipElement.innerHTML = content;
+        tooltipElement.style.display = 'block';
+    } else {
+        tooltipElement.style.display = 'none';
+    }
+});
+
+        // Hide tooltip on click
+        map.on('click', function () {
+            tooltipElement.style.display = 'none';
+        });
+    </script>
+</body>
+</html>
