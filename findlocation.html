@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Place to Coordinates Converter</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ol/dist/ol.css" type="text/css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ol3/4.6.5/ol.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+  <style>
+    #map {
+      height: 1000px;
+    }
+  </style>
+  <script>
+    var pointsData = [];
+
+    var map;
+    var vectorLayer;
+
+    function initMap() {
+      map = new ol.Map({
+        target: 'map',
+        layers: [
+          new ol.layer.Tile({
+            source: new ol.source.OSM()
+          })
+        ],
+        view: new ol.View({
+          center: ol.proj.fromLonLat([0, 0]),
+          zoom: 2
+        })
+      });
+
+      vectorLayer = new ol.layer.Vector({
+        source: new ol.source.Vector(),
+        style: new ol.style.Style({
+          image: new ol.style.Icon({
+            src: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-red.png',
+            scale: 0.5
+          })
+        })
+      });
+
+      map.addLayer(vectorLayer);
+    }
+
+    function addMarker(latitude, longitude) {
+      var markerFeature = new ol.Feature({
+        geometry: new ol.geom.Point(ol.proj.fromLonLat([longitude, latitude]))
+      });
+
+      vectorLayer.getSource().addFeature(markerFeature);
+    }
+
+    function removeMarkers() {
+      vectorLayer.getSource().clear();
+      pointsData = [];
+    }
+
+    function convertPlaceToCoordinates() {
+      var placeName = document.getElementById("placeName").value;
+
+      axios.get("https://nominatim.openstreetmap.org/search", {
+        params: {
+          q: placeName,
+          format: "json",
+        }
+      })
+      .then(function(response) {
+        if (response.data.length > 0) {
+          var latitude = parseFloat(response.data[0].lat);
+          var longitude = parseFloat(response.data[0].lon);
+
+          var newRecord = {
+            "name": placeName,
+            "latitude": latitude,
+            "longitude": longitude
+          };
+
+          pointsData.push(newRecord);
+
+          document.getElementById("latitude").innerHTML = "Latitude: " + latitude;
+          document.getElementById("longitude").innerHTML = "Longitude: " + longitude;
+          document.getElementById("json").innerHTML = JSON.stringify(newRecord, null, 2);
+
+          document.getElementById("placeName").value = "";
+
+          console.log(pointsData);
+
+          addMarker(latitude, longitude);
+
+          map.getView().animate({
+            center: ol.proj.fromLonLat([longitude, latitude]),
+            zoom: 14
+          });
+        } else {
+          alert("No results found.");
+        }
+      })
+      .catch(function(error) {
+        alert("Geocoding failed: " + error);
+      });
+    }
+  </script>
+</head>
+<body onload="initMap()">
+  <h1>Place to Coordinates Converter</h1>
+  <label for="placeName">Place Name:</label>
+  <input type="text" id="placeName">
+  <button onclick="convertPlaceToCoordinates()">Convert</button>
+  <button onclick="removeMarkers()">Reset</button>
+  <div id="latitude"></div>
+  <div id="longitude"></div>
+  <div id="json"></div>
+  <div id="map"></div>
+</body>
+</html>
