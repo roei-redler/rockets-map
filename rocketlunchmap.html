@@ -2,31 +2,196 @@
 <html>
 <head>
     <meta charset="UTF-8">
-    <title>Launch Drawing</title>
+    <title>Enhanced Rocket Trajectory Map</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ol/dist/ol.css" type="text/css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/ol3/4.6.5/ol.js"></script>
     <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: Arial, sans-serif;
+            background-color: #f5f5f5;
+        }
+        
+        .container {
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        .header {
+            background: #2c3e50;
+            color: white;
+            padding: 1rem;
+            text-align: center;
+            border-radius: 8px 8px 0 0;
+            margin-bottom: 0;
+        }
+
+        .header h1 {
+            margin: 0;
+            font-size: 24px;
+        }
+
+        .map-container {
+            background: white;
+            border-radius: 0 0 8px 8px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            aspect-ratio: 16/9;
+            position: relative;
+            overflow: hidden;
+        }
+
         #map {
             width: 100%;
-            height: 820px;
+            height: 100%;
+            border-radius: 4px;
         }
-         .tooltip {
+
+        .info-bubble {
             position: relative;
             display: none;
             background-color: white;
-            border: 1px solid #ccc;
-            padding: 8px;
-            font-size: 12px;
+            border-radius: 8px;
+            padding: 15px;
+            font-size: 14px;
+            box-shadow: 0 2px 15px rgba(0,0,0,0.2);
             z-index: 9999;
+            max-width: 300px; /* Increased width for more content */
+            border: 1px solid #e0e0e0;
+            pointer-events: none;
         }
-        
+
+        .info-section {
+            margin-bottom: 8px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .info-section:last-child {
+            margin-bottom: 0;
+            padding-bottom: 0;
+            border-bottom: none;
+        }
+
+        .threat-level {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+            color: white;
+        }
+
+        .threat-high {
+            background-color: #e74c3c;
+        }
+
+        .threat-medium {
+            background-color: #f39c12;
+        }
+
+        .threat-low {
+            background-color: #27ae60;
+        }
+        .info-bubble:after {
+            content: '';
+            position: absolute;
+            bottom: -10px;
+            left: 50%;
+            transform: translateX(-50%);
+            border-width: 10px 10px 0;
+            border-style: solid;
+            border-color: white transparent transparent;
+        }
+
+        .info-bubble .title {
+            font-weight: bold;
+            color: #2c3e50;
+            margin-bottom: 8px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .info-bubble .coordinates {
+            color: #666;
+            font-size: 13px;
+            line-height: 1.4;
+        }
+
+        .info-bubble .label {
+            color: #999;
+            font-size: 12px;
+        }
+
+        .legend {
+            position: absolute;
+            bottom: 30px;
+            right: 30px;
+            background: white;
+            padding: 12px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin: 5px 0;
+        }
+
+        .legend-color {
+            width: 20px;
+            height: 20px;
+            margin-right: 10px;
+            border-radius: 50%;
+            border: 2px solid white;
+            box-shadow: 0 0 0 1px #ccc;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 10px;
+            }
+            
+            .map-container {
+                aspect-ratio: 4/3;
+                padding: 10px;
+            }
+            
+            .header h1 {
+                font-size: 20px;
+            }
+        }
     </style>
 </head>
 <body>
-    <div id="map"></div>
-    <div id="tooltip" class="tooltip"></div>
+    <div class="container">
+        <div class="header">
+            <h1>Rocket Trajectory Visualization</h1>
+        </div>
+        <div class="map-container">
+            <div id="map"></div>
+            <div id="info-bubble" class="info-bubble"></div>
+            <div class="legend">
+                <div class="legend-item">
+                    <div class="legend-color" style="background-color: #e74c3c;"></div>
+                    <span>Launch Points</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background-color: #3498db;"></div>
+                    <span>Impact Points</span>
+                </div>
+            </div>
+        </div>
+    </div>
     <script>
-        // Create a map
+          // [Previous JavaScript code remains exactly the same]
         var map = new ol.Map({
             target: 'map',
             layers: [
@@ -35,59 +200,112 @@
                 })
             ],
             view: new ol.View({
-                center: ol.proj.fromLonLat([34.661044, 31.963158]), // Center coordinates
+                center: ol.proj.fromLonLat([34.661044, 31.963158]),
                 zoom: 9
             })
         });
 
-        // JSON dataset with launch and impact points
-        var pointsData = [
+ var pointsData = [
             {
-                "name": "Launch Point",
+                "name": "Launch Point Alpha",
                 "latitude": 31.54332883578639,
-                "longitude": 34.472345547473076
+                "longitude": 34.472345547473076,
+                "type": "launch",
+                "date": "2025-02-16",
+                "time": "08:15:23",
+                "weaponType": "Long-range Missile",
+                "threatLevel": "high",
+                "speed": 850,
+                "altitude": 1200,
+                "status": "Active"
             },
             {
-                "name": "Impact Point",
+                "name": "Impact Point Alpha",
                 "latitude": 32.217408583556605,
-                "longitude": 34.851464652113705
+                "longitude": 34.851464652113705,
+                "type": "impact",
+                "date": "2025-02-16",
+                "time": "08:18:45",
+                "threatLevel": "high",
+                "estimatedDamage": "Severe",
+                "status": "Projected"
             },
             {
-                "name": "Launch Point 2",
+                "name": "Launch Point Beta",
                 "latitude": 31.54332883578639,
-                "longitude": 34.472345547473076
+                "longitude": 34.472345547473076,
+                "type": "launch",
+                "date": "2025-02-16",
+                "time": "09:22:15",
+                "weaponType": "Medium-range Rocket",
+                "threatLevel": "medium",
+                "speed": 620,
+                "altitude": 800,
+                "status": "Active"
             },
             {
-                "name": "Impact Point 2",
+                "name": "Impact Point Beta",
                 "latitude": 31.755716785200804,
-                "longitude": 35.1852211621494
+                "longitude": 35.1852211621494,
+                "type": "impact",
+                "date": "2025-02-16",
+                "time": "09:24:30",
+                "threatLevel": "medium",
+                "estimatedDamage": "Moderate",
+                "status": "Projected"
             },
             {
-                "name": "Launch Point 3",
+                "name": "Launch Point Gamma",
                 "latitude": 31.54332883578639,
-                "longitude": 34.472345547473076
+                "longitude": 34.472345547473076,
+                "type": "launch",
+                "date": "2025-02-16",
+                "time": "10:05:33",
+                "weaponType": "Short-range Rocket",
+                "threatLevel": "low",
+                "speed": 450,
+                "altitude": 500,
+                "status": "Active"
             },
             {
-                "name": "Impact Point 3",
+                "name": "Impact Point Gamma",
                 "latitude": 31.6750041144112,
-                "longitude": 34.574609837593194
+                "longitude": 34.574609837593194,
+                "type": "impact",
+                "date": "2025-02-16",
+                "time": "10:06:45",
+                "threatLevel": "low",
+                "estimatedDamage": "Minor",
+                "status": "Projected"
             },
             {
-                "name": "Launch Point 3",
+                "name": "Launch Point Delta",
                 "latitude": 32.681846439944934,
-                "longitude": 51.59695345803914
+                "longitude": 51.59695345803914,
+                "type": "launch",
+                "date": "2025-02-16",
+                "time": "11:30:12",
+                "weaponType": "Long-range Missile",
+                "threatLevel": "high",
+                "speed": 920,
+                "altitude": 1500,
+                "status": "Active"
             },
             {
-                "name": "Impact Point 3",
+                "name": "Impact Point Delta",
                 "latitude": 31.755716785200804,
-                "longitude": 35.1852211621494
+                "longitude": 35.1852211621494,
+                "type": "impact",
+                "date": "2025-02-16",
+                "time": "11:34:45",
+                "threatLevel": "high",
+                "estimatedDamage": "Severe",
+                "status": "Projected"
             }
         ];
 
-        // Create an array to store the features
         var features = [];
 
-        // Iterate over the points data and create features dynamically
         for (var i = 0; i < pointsData.length; i += 2) {
             var launchPoint = pointsData[i];
             var impactPoint = pointsData[i + 1];
@@ -102,54 +320,58 @@
                 data: impactPoint
             });
 
-            // Set the style for each point
             launchFeature.setStyle(new ol.style.Style({
                 image: new ol.style.Circle({
-                    radius: 6,
+                    radius: 8,
                     fill: new ol.style.Fill({
-                        color: 'red'
+                        color: '#e74c3c'
                     }),
                     stroke: new ol.style.Stroke({
                         color: 'white',
                         width: 2
                     })
-                })
+                }),
+                zIndex: 1
             }));
 
             impactFeature.setStyle(new ol.style.Style({
                 image: new ol.style.Circle({
-                    radius: 6,
+                    radius: 8,
                     fill: new ol.style.Fill({
-                        color: 'blue'
+                        color: '#3498db'
                     }),
                     stroke: new ol.style.Stroke({
                         color: 'white',
                         width: 2
                     })
-                })
+                }),
+                zIndex: 1
             }));
 
             features.push(launchFeature, impactFeature);
 
-            // Create a line between the launch point and the impact point
+            var coordinates = [
+                ol.proj.fromLonLat([launchPoint.longitude, launchPoint.latitude]),
+                ol.proj.fromLonLat([impactPoint.longitude, impactPoint.latitude])
+            ];
+
             var lineFeature = new ol.Feature({
-                geometry: new ol.geom.LineString([
-                    launchFeature.getGeometry().getCoordinates(),
-                    impactFeature.getGeometry().getCoordinates()
-                ])
+                geometry: new ol.geom.LineString(coordinates)
             });
+
             lineFeature.setStyle(new ol.style.Style({
                 stroke: new ol.style.Stroke({
-                    color: 'black',
-                    width: 2
-                })
+                    color: 'rgba(0, 0, 0, 0.6)',
+                    width: 2,
+                    lineDash: [10, 10],
+                }),
+                zIndex: 0
             }));
 
             features.push(lineFeature);
         }
 
-        // Create a vector source and layer
-        var vectorSource= new ol.source.Vector({
+        var vectorSource = new ol.source.Vector({
             features: features
         });
 
@@ -157,43 +379,79 @@
             source: vectorSource
         });
 
-        // Add the vector layer to the map
         map.addLayer(vectorLayer);
 
-        // Create a tooltip overlay
-        var tooltipElement = document.getElementById('tooltip');
-        var tooltip = new ol.Overlay({
-            element: tooltipElement,
-            offset: [10, 0],
-            positioning: 'bottom-left'
+        var infoBubbleElement = document.getElementById('info-bubble');
+        var infoBubble = new ol.Overlay({
+            element: infoBubbleElement,
+            offset: [0, -20],
+            positioning: 'bottom-center'
         });
-        map.addOverlay(tooltip);
+        map.addOverlay(infoBubble);
 
-// Display tooltip on pointermove
-map.on('pointermove', function (evt) {
-    var feature = map.forEachFeatureAtPixel(evt.pixel, function (feature) {
-        return feature;
-    });
+         map.on('pointermove', function (evt) {
+            var hit = false;
+            
+            map.forEachFeatureAtPixel(evt.pixel, function (feature) {
+                if (feature.get('data')) {
+                    hit = true;
+                    var coordinate = feature.getGeometry().getCoordinates();
+                    infoBubble.setPosition(coordinate);
 
-    if (feature && feature.get('data')) {
-        var coordinate = evt.coordinate;
-        tooltip.setPosition(coordinate);
+                    var data = feature.get('data');
+                    var threatClass = `threat-${data.threatLevel.toLowerCase()}`;
+                    
+                    // Different content for launch and impact points
+                    var content = `
+                        <div class="info-section">
+                            <div class="title">${data.name}</div>
+                            <div class="threat-level ${threatClass}">${data.threatLevel.toUpperCase()}</div>
+                        </div>
+                        <div class="info-section">
+                            <div class="label">Time Details:</div>
+                            <div>Date: ${data.date}</div>
+                            <div>Time: ${data.time}</div>
+                        </div>`;
 
-        var data = feature.get('data');
-        var content = '<strong>Name:</strong> ' + data.name + '<br>';
-        content += '<strong>Latitude:</strong> ' + data.latitude.toFixed(6) + '<br>';
-        content += '<strong>Longitude:</strong> ' + data.longitude.toFixed(6);
+                    if (data.type === 'launch') {
+                        content += `
+                            <div class="info-section">
+                                <div class="label">Launch Details:</div>
+                                <div>Weapon Type: ${data.weaponType}</div>
+                                <div>Speed: ${data.speed} m/s</div>
+                                <div>Altitude: ${data.altitude} m</div>
+                                <div>Status: ${data.status}</div>
+                            </div>`;
+                    } else {
+                        content += `
+                            <div class="info-section">
+                                <div class="label">Impact Details:</div>
+                                <div>Estimated Damage: ${data.estimatedDamage}</div>
+                                <div>Status: ${data.status}</div>
+                            </div>`;
+                    }
 
-        tooltipElement.innerHTML = content;
-        tooltipElement.style.display = 'block';
-    } else {
-        tooltipElement.style.display = 'none';
-    }
-});
+                    content += `
+                        <div class="info-section">
+                            <div class="label">Location:</div>
+                            <div>Lat: ${data.latitude.toFixed(6)}</div>
+                            <div>Lon: ${data.longitude.toFixed(6)}</div>
+                        </div>`;
 
-        // Hide tooltip on click
-        map.on('click', function () {
-            tooltipElement.style.display = 'none';
+                    infoBubbleElement.innerHTML = content;
+                    infoBubbleElement.style.display = 'block';
+                    
+                    map.getTargetElement().style.cursor = 'pointer';
+                    return true;
+                }
+            }, {
+                hitTolerance: 5
+            });
+
+            if (!hit) {
+                infoBubbleElement.style.display = 'none';
+                map.getTargetElement().style.cursor = '';
+            }
         });
     </script>
 </body>
